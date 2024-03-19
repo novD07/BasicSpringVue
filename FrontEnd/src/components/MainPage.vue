@@ -11,7 +11,7 @@
         </div>
         <div class="col-2 me-3">
           <select class=" form-select">
-            <option disabled selected>Click me</option>
+            <option v-for="service in services">{{ service.ten_dich_vu }}</option>
           </select>
         </div>
         <div class="col-2">
@@ -53,17 +53,18 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>MGD-10</td>
-              <td>Đất</td>
-              <td>2023-02-01</td>
-              <td>600.000</td>
-              <td>100</td>
-              <td>Hồ Xuân Đại</td>
-              <td>0987620752</td>
-              <td>hoxuandai02@gmail.com</td>
+            <tr v-for="transaction in transactions" :key="transaction.id">
+              <td>{{ transaction.ma_giao_dich }}</td>
+              <td>{{ transaction.loai_dich_vu_id.ten_dich_vu }}</td>
+              <td>{{ this.formatDate(transaction.ngay_giao_dich) }}</td>
+              <td>{{ transaction.don_gia.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") }}</td>
+              <td>{{ transaction.dien_tich }}</td>
+              <td>{{ transaction.khach_hang_id.ten_khach_hang }}</td>
+              <td>{{ transaction.khach_hang_id.sdt }}</td>
+              <td>{{ transaction.khach_hang_id.email }}</td>
               <td class="text-center">
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAttribute">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAttribute"
+                  @click=detailTransactionId(transaction.id)>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                     class="bi bi-eye-fill " viewBox="0 0 16 16">
                     <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0" />
@@ -73,7 +74,8 @@
                 </button>
               </td>
               <td class="text-center">
-                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalDel">
+                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalDel"
+                  @click="deleteTransactionId(transaction.id)">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                     class="bi bi-x-octagon" viewBox="0 0 16 16">
                     <path
@@ -99,29 +101,38 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3 d-flex">
-            <p>Mã giao dịch: </p>
-
+          <div class="mb-2 d-flex">
+            <p>Mã giao dịch:</p>
+            <div>{{ detailTransaction ? detailTransaction.ma_giao_dich : '' }}</div>
           </div>
-          <div class="mb-3 d-flex">
+          <div class="mb-2 d-flex">
             <p>Loại dịch vụ: </p>
-            <div></div>
+            <div>{{ detailTransaction ? detailTransaction.loai_dich_vu_id.ten_dich_vu : '' }}</div>
           </div>
-          <div class="mb-3 d-flex">
+          <div class="mb-2 d-flex">
             <p>Ngày giao dịch: </p>
-            <div></div>
+            <div>{{ detailTransaction ? formatDate(detailTransaction.ngay_giao_dich) : '' }}</div>
           </div>
-          <div class="mb-3 d-flex">
-            <p>Đơn giá: </p>
-            <div></div>
+          <div class="mb-2 d-flex">
+            <p>Đơn giá (VND/m2): </p>
+            <div>{{ detailTransaction ? detailTransaction.don_gia.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : ''
+              }}</div>
           </div>
-          <div class="mb-3 d-flex">
-            <p>Diện tích: </p>
-            <div></div>
+          <div class="mb-2 d-flex">
+            <p>Diện tích (m2): </p>
+            <div>{{ detailTransaction ? detailTransaction.dien_tich : '' }}</div>
           </div>
-          <div class="mb-3 d-flex">
+          <div class="mb-2 d-flex">
             <p>Tên khách hàng: </p>
-            <div></div>
+            <div>{{ detailTransaction ? detailTransaction.khach_hang_id.ten_khach_hang : '' }}</div>
+          </div>
+          <div class="mb-2 d-flex">
+            <p>Số điện thoại: </p>
+            <div>{{ detailTransaction ? detailTransaction.khach_hang_id.sdt : '' }}</div>
+          </div>
+          <div class="mb-2 d-flex">
+            <p>Email: </p>
+            <div>{{ detailTransaction ? detailTransaction.khach_hang_id.email : '' }}</div>
           </div>
         </div>
         <div class="modal-footer">
@@ -142,35 +153,42 @@
         <div class="modal-body">
           <div class="mb-3 d-flex">
             <p>Mã giao dịch</p>
-            <input class="form-control" type="text" />
+            <input class="form-control" type="text" v-model="newTransaction.ma_giao_dich" @keyup="checkFormat" />
           </div>
+          <div class="mb-3 text-danger" v-if="!isValidFormat">Vui lòng nhập đúng định dạng: MGD-xxxx (xxxx: 0 - 9)</div>
           <div class="mb-3 d-flex">
             <p>Loại dịch vụ</p>
-            <select class="form-select">
-              <option>Đất</option>
-              <option>Nhà và đất</option>
+            <select class="form-select" v-model="newTransaction.loai_dich_vu_id.id">
+              <option v-for="service in services" :value="service.id">{{ service.ten_dich_vu }}</option>
             </select>
           </div>
           <div class="mb-3 d-flex">
             <p>Ngày giao dịch</p>
-            <input id="startDate" class="form-control" type="date" />
+            <input id="startDate" class="form-control" type="date" v-model="newTransaction.ngay_giao_dich"
+              @keyup="checkDate" />
+            <div class="mb-3 text-danger" v-if="!isValidDate">Ngày giao dịch phải lớn hơn thời gian hiện tại</div>
           </div>
           <div class="mb-3 d-flex">
             <p>Đơn giá</p>
-            <input class="form-control" type="text" />
+            <input class="form-control" type="text" v-model="newTransaction.don_gia" @keyup="checkCost" />
+            <div class="mb-3 text-danger" v-if="!isValidCost">Đơn giá phải lớn hơn 500,000đ</div>
           </div>
           <div class="mb-3 d-flex">
             <p>Diện tích</p>
-            <input class="form-control" type="text" />
+            <input class="form-control" type="text" v-model="newTransaction.dien_tich" @keyup="checkAcreage" />
+            <div class="mb-3 text-danger" v-if="!isValidAcreage">Diện tích phải lớn hơn 20m2</div>
           </div>
           <div class="mb-3 d-flex">
             <p>Tên khách hàng</p>
-            <input class="form-control" type="text" />
+            <select class="form-select" v-model="newTransaction.khach_hang_id.id">
+              <option v-for="customer in customers" :value="customer.id">{{ customer.ten_khach_hang }}</option>
+            </select>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-          <button type="button" class="btn btn-primary">Thêm mới</button>
+          <button type="button" class="btn btn-primary" @click="addTransaction()" data-bs-dismiss="modal">Thêm
+            mới</button>
         </div>
       </div>
     </div>
@@ -190,8 +208,9 @@
           </div>
         </div>
         <div class="modal-footer">
+          <button type="button" class="btn btn-danger" data-bs-dismiss="modal"
+            @click="confirmDelete(selectedDel)">Xóa</button>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-          <button type="button" class="btn btn-danger">Xóa</button>
         </div>
       </div>
     </div>
@@ -199,12 +218,160 @@
 </template>
 
 <script>
+import axios from 'axios';
+import Swal from 'sweetalert2';
+
 export default {
   name: 'MainPage',
-  props: {
-    msg: String
+  data() {
+    return {
+      searchText: '',
+      customers: [],
+      services: [],
+      transactions: [],
+      detailTransaction: null,
+      selectedId: null,
+      newTransaction: {
+        ma_giao_dich: '',
+        loai_dich_vu_id: {
+          id: null
+        },
+        ngay_giao_dich: '',
+        don_gia: '',
+        dien_tich: '',
+        khach_hang_id: {
+          id: null
+        }
+      },
+      isValidFormat: true,
+      isValidDate: true,
+      isValidCost: true,
+      isValidAcreage: true,
+    }
+  },
+
+  mounted() {
+    this.fetchData();
+    this.fetchCustomers();
+    this.fetchServices();
+  },
+
+  methods: {
+    formatDate(dateString) {
+      const date = new Date(dateString);
+
+      const day = date.getDate();
+      const month = date.getMonth() + 1;
+      const year = date.getFullYear();
+
+      const formattedDay = (day < 10) ? '0' + day : day;
+      const formattedMonth = (month < 10) ? '0' + month : month;
+
+      return formattedDay + ' - ' + formattedMonth + ' - ' + year;
+    },
+
+    async fetchData() {
+      try {
+        const apiUrl = process.env.VUE_APP_URL;
+        const reponse = await axios.get(apiUrl + `/api/giaodich`);
+        this.transactions = reponse.data;
+
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    },
+
+    async fetchCustomers() {
+      try {
+        const apiUrl = process.env.VUE_APP_URL;
+        const response = await axios.get(apiUrl + `/api/khachhang`);
+        this.customers = response.data;
+      } catch (error) {
+        console.error("Error fetching customers:", error);
+      }
+    },
+
+    async fetchServices() {
+      try {
+        const apiUrl = process.env.VUE_APP_URL;
+        const response = await axios.get(apiUrl + `/api/loaidichvu`);
+        this.services = response.data;
+      } catch (error) {
+        console.error("Error fetching customers:", error);
+      }
+    },
+
+    async addTransaction() {
+      if (isValidFormat === false || isValidDate === false || isValidCost === false || isValidAcreage === false) {
+        try {
+          if (!this.newTransaction.ma_giao_dich || !this.newTransaction.loai_dich_vu_id.id || !this.newTransaction.ngay_giao_dich
+            || !this.newTransaction.don_gia || !this.newTransaction.dien_tich || !this.newTransaction.khach_hang_id.id) {
+            Swal.fire('Vui lòng điền đầy đủ thông tin', '', 'error');
+            return;
+          }
+
+          const apiUrl = process.env.VUE_APP_URL;
+          const response = await axios.post(apiUrl + `/api/giaodich/add`, this.newTransaction);
+          if (response.status === 200) {
+            this.fetchData()
+            Swal.fire('Thêm mới thành công', '', 'success');
+          } else {
+            Swal.fire('Đã xảy ra lỗi', 'Vui lòng thử lại sau', 'error');
+          }
+        } catch (error) {
+          console.error("Error adding transaction:", error);
+          Swal.fire('Đã xảy ra lỗi', 'Vui lòng thử lại sau', 'error');
+        }
+      }
+    },
+
+    detailTransactionId(transactionId) {
+      this.detailTransaction = this.transactions.find(transaction => transaction.id === transactionId)
+    },
+
+    deleteTransactionId(transactionId) {
+      this.selectedId = this.transactions.find(transaction => transaction.id === transactionId)
+    },
+
+    async confirmDelete(selectedDel) {
+      const deleteId = this.selectedId.id
+      try {
+        const apiUrl = process.env.VUE_APP_URL;
+        await axios.delete(apiUrl + `/api/giaodich/${deleteId}`)
+
+        this.transactions = this.transactions.filter(transaction => transaction.id !== deleteId);
+        Swal.fire("Xóa thành công", "", "success");
+      } catch (error) {
+        console.error("Error deleting transaction:", error);
+        Swal.fire('Đã xảy ra lỗi', 'Vui lòng thử lại sau', 'error');
+      }
+    },
+
+    checkFormat() {
+      const regex = /^MGD-\d{4}$/;
+      this.isValidFormat = regex.test(this.newTransaction.ma_giao_dich);
+      return true;
+    },
+
+    checkDate() {
+      const selectedDate = new Date(this.newTransaction.ngay_giao_dich);
+      const currentDate = new Date();
+      this.isValidDate = regex.test(this.newTransaction.ma_giao_dich);
+      return selectedDate <= currentDate ? true : false
+    },
+
+    checkPrice() {
+      this.isValidCost = regex.test(this.newTransaction.ma_giao_dich);
+      return this.newTransaction.don_gia > 500000 ? true : false
+    },
+
+    checkArea() {
+      this.isValidAcreage = regex.test(this.newTransaction.ma_giao_dich);
+      return this.newTransaction.dien_tich > 20 ? true : false;
+    }
   }
 }
+
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
