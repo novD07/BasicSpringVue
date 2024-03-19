@@ -7,15 +7,17 @@
 
       <div class="d-flex justify-content-center my-5">
         <div class="col-3 me-3">
-          <input class="form-control" type="text" placeholder="Nhập tên khách hàng" />
+          <input class="form-control" type="text" placeholder="Nhập tên khách hàng"
+            v-model="searchAndSelect.ten_khach_hang" />
         </div>
         <div class="col-2 me-3">
-          <select class=" form-select">
-            <option v-for="service in services">{{ service.ten_dich_vu }}</option>
+          <select class=" form-select" v-model="searchAndSelect.loai_dich_vu_id">
+            <option v-for="service in services" :value="service.id">{{ service.ten_dich_vu }}
+            </option>
           </select>
         </div>
         <div class="col-2">
-          <button class="btn btn-primary ">
+          <button class="btn btn-primary " @click="search()">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search me-2"
               viewBox="0 0 16 16">
               <path
@@ -153,7 +155,7 @@
         <div class="modal-body">
           <div class="mb-3 d-flex">
             <p>Mã giao dịch</p>
-            <input class="form-control" type="text" v-model="newTransaction.ma_giao_dich" @keyup="checkFormat" />
+            <input class="form-control" type="text" v-model="newTransaction.ma_giao_dich" @keyup="checkFormat"/>
           </div>
           <div class="mb-3 text-danger" v-if="!isValidFormat">Vui lòng nhập đúng định dạng: MGD-xxxx (xxxx: 0 - 9)</div>
           <div class="mb-3 d-flex">
@@ -162,22 +164,22 @@
               <option v-for="service in services" :value="service.id">{{ service.ten_dich_vu }}</option>
             </select>
           </div>
-          <div class="mb-3 d-flex">
+          <div class="mb-3 d-flex" >
             <p>Ngày giao dịch</p>
             <input id="startDate" class="form-control" type="date" v-model="newTransaction.ngay_giao_dich"
-              @keyup="checkDate" />
-            <div class="mb-3 text-danger" v-if="!isValidDate">Ngày giao dịch phải lớn hơn thời gian hiện tại</div>
+              @change="checkDate"/>
           </div>
+          <div class="mb-3 text-danger" v-if="!isValidDate">Ngày giao dịch phải lớn hơn thời gian hiện tại</div>
           <div class="mb-3 d-flex">
             <p>Đơn giá</p>
-            <input class="form-control" type="text" v-model="newTransaction.don_gia" @keyup="checkCost" />
-            <div class="mb-3 text-danger" v-if="!isValidCost">Đơn giá phải lớn hơn 500,000đ</div>
+            <input class="number form-control" type="number" v-model="newTransaction.don_gia" @keyup="checkPrice"/>
           </div>
+          <div class="mb-3 text-danger" v-if="!isValidCost">Đơn giá phải lớn hơn 500,000đ</div>
           <div class="mb-3 d-flex">
             <p>Diện tích</p>
-            <input class="form-control" type="text" v-model="newTransaction.dien_tich" @keyup="checkAcreage" />
-            <div class="mb-3 text-danger" v-if="!isValidAcreage">Diện tích phải lớn hơn 20m2</div>
+            <input class="number form-control" type="number" v-model="newTransaction.dien_tich" @keyup="checkArea" />
           </div>
+          <div class="mb-3 text-danger" v-if="!isValidArea">Diện tích phải lớn hơn 20m2</div>
           <div class="mb-3 d-flex">
             <p>Tên khách hàng</p>
             <select class="form-select" v-model="newTransaction.khach_hang_id.id">
@@ -205,11 +207,12 @@
         <div class="modal-body">
           <div class="mb-3 d-flex">
             Bạn có chắc chắn muốn xóa giao dịch có mã:
+            <strong class="text-danger"> {{ selectedId ? selectedId.ma_giao_dich : "" }}</strong>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-danger" data-bs-dismiss="modal"
-            @click="confirmDelete(selectedDel)">Xóa</button>
+            @click="confirmDelete()">Xóa</button>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
         </div>
       </div>
@@ -219,6 +222,7 @@
 
 <script>
 import axios from 'axios';
+import { error } from 'jquery';
 import Swal from 'sweetalert2';
 
 export default {
@@ -246,7 +250,14 @@ export default {
       isValidFormat: true,
       isValidDate: true,
       isValidCost: true,
-      isValidAcreage: true,
+      isValidArea: true,
+
+      searchAndSelect: {
+        loai_dich_vu_id: "0",
+        ten_khach_hang: null
+      },
+
+      transactionsSearch: [],
     }
   },
 
@@ -275,6 +286,8 @@ export default {
         const apiUrl = process.env.VUE_APP_URL;
         const reponse = await axios.get(apiUrl + `/api/giaodich`);
         this.transactions = reponse.data;
+        this.transactionsSearch = this.transactions
+        console.log(error);
 
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -302,26 +315,33 @@ export default {
     },
 
     async addTransaction() {
-      if (isValidFormat === false || isValidDate === false || isValidCost === false || isValidAcreage === false) {
-        try {
-          if (!this.newTransaction.ma_giao_dich || !this.newTransaction.loai_dich_vu_id.id || !this.newTransaction.ngay_giao_dich
-            || !this.newTransaction.don_gia || !this.newTransaction.dien_tich || !this.newTransaction.khach_hang_id.id) {
-            Swal.fire('Vui lòng điền đầy đủ thông tin', '', 'error');
-            return;
-          }
-
-          const apiUrl = process.env.VUE_APP_URL;
-          const response = await axios.post(apiUrl + `/api/giaodich/add`, this.newTransaction);
-          if (response.status === 200) {
-            this.fetchData()
-            Swal.fire('Thêm mới thành công', '', 'success');
-          } else {
-            Swal.fire('Đã xảy ra lỗi', 'Vui lòng thử lại sau', 'error');
-          }
-        } catch (error) {
-          console.error("Error adding transaction:", error);
+      if (!this.isValidFormat || !this.isValidDate || !this.isValidArea || !this.isValidArea) {
+        Swal.fire('Vui lòng nhập đúng định dạng', 'Vui lòng thử lại sau', 'error');
+        return
+      }
+      try {
+        if (!this.newTransaction.ma_giao_dich || !this.newTransaction.loai_dich_vu_id.id || !this.newTransaction.ngay_giao_dich
+          || !this.newTransaction.don_gia || !this.newTransaction.dien_tich || !this.newTransaction.khach_hang_id.id) {
+          Swal.fire('Vui lòng điền đầy đủ thông tin', '', 'error');
+          return;
+        }
+        const apiUrl = process.env.VUE_APP_URL;
+        const response = await axios.post(apiUrl + `/api/giaodich/add`, this.newTransaction);
+        if (response.status === 200) {
+          this.fetchData();
+          Swal.fire('Thêm mới thành công', '', 'success');
+          this.newTransaction.ma_giao_dich = ''
+          this.newTransaction.loai_dich_vu_id = 1
+          this.newTransaction.ngay_giao_dich = ''
+          this.newTransaction.don_gia = ""
+          this.newTransaction.dien_tich = ""
+          this.newTransaction.khach_hang_id = 1
+        } else {
           Swal.fire('Đã xảy ra lỗi', 'Vui lòng thử lại sau', 'error');
         }
+      } catch (error) {
+        console.error("Error adding transaction:", error);
+        Swal.fire('Đã xảy ra lỗi', 'Vui lòng thử lại sau', 'error');
       }
     },
 
@@ -333,13 +353,14 @@ export default {
       this.selectedId = this.transactions.find(transaction => transaction.id === transactionId)
     },
 
-    async confirmDelete(selectedDel) {
+    async confirmDelete() {
       const deleteId = this.selectedId.id
       try {
         const apiUrl = process.env.VUE_APP_URL;
         await axios.delete(apiUrl + `/api/giaodich/${deleteId}`)
 
         this.transactions = this.transactions.filter(transaction => transaction.id !== deleteId);
+        this.transactionsSearch = this.transactions
         Swal.fire("Xóa thành công", "", "success");
       } catch (error) {
         console.error("Error deleting transaction:", error);
@@ -350,26 +371,58 @@ export default {
     checkFormat() {
       const regex = /^MGD-\d{4}$/;
       this.isValidFormat = regex.test(this.newTransaction.ma_giao_dich);
-      return true;
+      return this.isValidFormat;
     },
 
     checkDate() {
       const selectedDate = new Date(this.newTransaction.ngay_giao_dich);
       const currentDate = new Date();
-      this.isValidDate = regex.test(this.newTransaction.ma_giao_dich);
-      return selectedDate <= currentDate ? true : false
+      this.isValidDate = selectedDate > currentDate;
+      return this.isValidDate
     },
 
     checkPrice() {
-      this.isValidCost = regex.test(this.newTransaction.ma_giao_dich);
-      return this.newTransaction.don_gia > 500000 ? true : false
+      this.isValidCost = this.newTransaction.don_gia > 500000
+      return this.isValidCost
     },
 
     checkArea() {
-      this.isValidAcreage = regex.test(this.newTransaction.ma_giao_dich);
-      return this.newTransaction.dien_tich > 20 ? true : false;
-    }
-  }
+      this.isValidArea = this.newTransaction.dien_tich > 20
+      return this.isValidArea
+    },
+
+    search() {
+      const filterTransactions = this.transactionsSearch.filter((transaction) => {
+        if (this.searchAndSelect.ten_khach_hang && this.searchAndSelect.loai_dich_vu_id != "0") {
+          console.log("đúng 1", this.searchAndSelect);
+          return (
+            transaction.khach_hang_id.ten_khach_hang
+              .toLowerCase()
+              .includes(this.searchAndSelect.ten_khach_hang.toLowerCase()) &&
+            transaction.loai_dich_vu_id.id === parseInt(this.searchAndSelect.loai_dich_vu_id)
+          );
+        }
+        if (this.searchAndSelect.ten_khach_hang) {
+          console.log("đúng 2", this.searchAndSelect);
+
+          return transaction.khach_hang_id.ten_khach_hang
+            .toLowerCase()
+            .includes(this.searchAndSelect.ten_khach_hang.toLowerCase());
+        }
+        if (this.searchAndSelect.loai_dich_vu_id != "0") {
+          return (
+            transaction.loai_dich_vu_id.id === parseInt(this.searchAndSelect.loai_dich_vu_id)
+          );
+        }
+        return true;
+      });
+      if (filterTransactions.length == 0) {
+        Swal.fire("Không tìm thấy kết quả", "", "errors")
+      } else {
+        this.transactions = filterTransactions;
+      }
+    },
+  },
 }
 
 </script>
@@ -384,5 +437,13 @@ export default {
 p {
   align-items: center;
   width: 50%;
+}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type=number] {
+    -moz-appearance: textfield;
 }
 </style>

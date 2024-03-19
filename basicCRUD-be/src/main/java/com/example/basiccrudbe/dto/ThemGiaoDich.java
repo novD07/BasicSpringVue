@@ -12,7 +12,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 
-public class AddGiaoDich {
+public class ThemGiaoDich {
     private Long id;
     private String ma_giao_dich;
     private Loaidichvu loai_dich_vu_id;
